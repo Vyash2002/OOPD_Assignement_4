@@ -113,8 +113,7 @@ ________________________________________
 
 ├── basicIO.cpp
 
-│
-├── erp_menu.cpp # Unified Q1–Q5 menu-driven system
+├── erp_menu.cpp  # Unified Q1–Q5 menu-driven system
 
 ├── erp_q1.cpp
 
@@ -126,16 +125,12 @@ ________________________________________
 
 ├── erp_q5.cpp
 
-│
 ├── mythread_noos.h      # Custom fallback threads
 
-│
 ├── makefile
 
 ├── students_3000.csv    # Input dataset (3000 students)
 
-│
-│
 └── README.md
 ________________________________________
 
@@ -182,23 +177,4 @@ It preserves this interface:
 
 But internally executes sequentially — enough to satisfy assignment requirements.
 ________________________________________
-
-
-🏆 Concepts Demonstrated
-
-Concept                               Applied In
-
-Data Abstraction	                Student representation
-
-File Handling	                    CSV parsing for 3000 students
-
-Mapping/Hashing	                  IIT <-> IIIT mapping, grade index
-
-Custom Thread Simulation	        Parallel sorting(Q3)
-
-Iterators	                        Sorted Views(Q4)
-
-k-way Merge Sort	                Final merge step (Q3)
-
-Menu-Driven UI	                  erp_menu.cpp
 
