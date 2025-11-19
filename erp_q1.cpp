@@ -1,301 +1,209 @@
-// erp_q1_no_os_threads.cpp
-// Compile: g++ -std=c++17 erp_q1_no_os_threads.cpp -O2 -o erp_q1_noos
-// No -pthread required. This uses a no-OS-thread fallback (mythread_noos.h).
-//
-// Behavior: same as prior ERP program, but without any real threading support.
-// It still logs "worker" timings (they measure execution time of each synchronous worker).
+// erp_q1.cpp
+// Q1: Universal Student class supporting multiple field types (no <variant>)
+// Demonstrates extracting 3–4 students and printing their roll numbers,
+// courses, and grades exactly as requested.
 
 #include <bits/stdc++.h>
-#include "mythread_noos.h"
-
 using namespace std;
-using Clock = chrono::high_resolution_clock;
-using ms = chrono::duration<double, milli>;
 
-// -----------------------------
-// Flexible Student template
-// -----------------------------
-template<typename RollT, typename CourseT, typename GradeT>
-struct CourseRecord {
-    CourseT course;
-    GradeT grade;
+// ------------------ Flexible Roll Number Type ------------------
+
+class RollNumber {
+    bool is_numeric;
+    unsigned int numeric_value;
+    string string_value;
+
+public:
+    RollNumber() : is_numeric(false), numeric_value(0), string_value("") {}
+
+    // Auto-detect type
+    RollNumber(const string &raw) {
+        bool num = !raw.empty();
+        for(char c : raw) if(!isdigit((unsigned char)c)) num = false;
+
+        if(num) {
+            is_numeric = true;
+            numeric_value = (unsigned int)stoul(raw);
+            string_value = "";
+        } else {
+            is_numeric = false;
+            string_value = raw;
+            numeric_value = 0;
+        }
+    }
+
+    string toString() const {
+        return is_numeric ? to_string(numeric_value) : string_value;
+    }
 };
 
-template<typename RollT, typename CourseT, typename GradeT>
+// ------------------ Flexible CourseId Type ------------------
+
+class CourseId {
+    bool is_int;
+    int int_value;
+    string str_value;
+
+public:
+    CourseId() : is_int(false), int_value(0), str_value("") {}
+
+    CourseId(const string &raw) {
+        bool num = !raw.empty();
+        for(char c : raw) if(!isdigit((unsigned char)c)) num = false;
+
+        if(num) {
+            is_int = true;
+            int_value = stoi(raw);
+            str_value = "";
+        } else {
+            is_int = false;
+            str_value = raw;
+            int_value = 0;
+        }
+    }
+
+    string toString() const {
+        return is_int ? to_string(int_value) : str_value;
+    }
+};
+
+// ------------------ Universal Student Class ------------------
+
 class Student {
-private:
-    string name_;
-    RollT roll_;
-    string branch_;
-    int start_year_;
-    vector<CourseT> current_courses_;
-    vector<CourseRecord<RollT, CourseT, GradeT>> prev_courses_;
 public:
-    Student() = default;
-    Student(const string &name, const RollT &roll, const string &branch, int start_year)
-        : name_(name), roll_(roll), branch_(branch), start_year_(start_year) {}
+    string name;
+    RollNumber roll;
+    string branch;
+    int start_year;
 
-    void addCurrentCourse(const CourseT &c) { current_courses_.push_back(c); }
-    void addPrevCourse(const CourseT &c, const GradeT &g) {
-        CourseRecord<RollT, CourseT, GradeT> cr;
-        cr.course = c;
-        cr.grade = g;
-        prev_courses_.push_back(cr);
-    }
-    const string& name() const { return name_; }
-    const RollT& roll() const { return roll_; }
-    const string& branch() const { return branch_; }
-    int start_year() const { return start_year_; }
-    const vector<CourseT>& current_courses() const { return current_courses_; }
-    const vector<CourseRecord<RollT, CourseT, GradeT>>& prev_courses() const { return prev_courses_; }
+    vector<CourseId> current_courses;
+    vector<pair<CourseId, double>> previous_courses;
 
-    string toCSVRow() const {
-        ostringstream oss;
-        oss << '"' << name_ << '"' << ",";
-        { ostringstream r; r << roll_; oss << '"' << r.str() << '"' << ","; }
-        oss << branch_ << "," << start_year_ << ",";
-        for (size_t i = 0; i < current_courses_.size(); ++i) {
-            if (i) oss << ";";
-            ostringstream c; c << current_courses_[i];
-            oss << c.str();
-        }
-        oss << ",";
-        for (size_t i = 0; i < prev_courses_.size(); ++i) {
-            if (i) oss << ";";
-            ostringstream c; c << prev_courses_[i].course;
-            ostringstream g; g << prev_courses_[i].grade;
-            oss << c.str() << "|" << g.str();
-        }
-        return oss.str();
-    }
+    Student() : start_year(0) {}
 };
 
-// -----------------------------
-// SimpleThread using MyThreadNoOS::Thread (synchronous fake thread)
-// -----------------------------
-class SimpleThread {
-public:
-    using Task = function<void()>;
+// ------------------ CSV Utilities ------------------
 
-    SimpleThread() : started_(false) {}
-
-    void start(Task t, const string &name = "worker") {
-        using namespace MyThreadNoOS;
-        if (started_) throw runtime_error("already started");
-        started_ = true;
-        // Wrap task to measure time and set log
-        auto wrapper = [t = move(t), name, this]() {
-            auto t0 = Clock::now();
-            t();
-            auto t1 = Clock::now();
-            double dur = chrono::duration_cast<ms>(t1 - t0).count();
-            log_ = name + " finished in " + to_string(dur) + " ms";
-        };
-        // Start synchronous "thread"
-        thread_impl_ = MyThreadNoOS::Thread(wrapper);
-    }
-
-    void join() {
-        // since tasks ran synchronously, join is no-op
-    }
-
-    string getLog() const { return log_; }
-
-private:
-    bool started_;
-    MyThreadNoOS::Thread thread_impl_;
-    string log_;
-};
-
-// -----------------------------
-// CSV helpers
-// -----------------------------
-static inline vector<string> split(const string &s, char delim) {
-    vector<string> out;
-    string cur;
-    bool inquotes = false;
-    for (size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (c == '"') { inquotes = !inquotes; continue; }
-        if (c == delim && !inquotes) {
-            out.push_back(cur);
-            cur.clear();
-        } else cur.push_back(c);
-    }
-    out.push_back(cur);
-    return out;
-}
-static inline string trim(const string &s) {
+string trim(const string &s) {
     size_t a = 0;
     while (a < s.size() && isspace((unsigned char)s[a])) ++a;
     size_t b = s.size();
-    while (b> a && isspace((unsigned char)s[b-1])) --b;
-    return s.substr(a, b-a);
+    while (b > a && isspace((unsigned char)s[b-1])) --b;
+    return s.substr(a, b - a);
 }
-static inline vector<string> parseSemis(const string &s) {
-    vector<string> out;
-    if (s.empty()) return out;
-    string cur;
-    for (char c : s) {
-        if (c == ';') { out.push_back(trim(cur)); cur.clear(); }
-        else cur.push_back(c);
+
+vector<string> split_semicolon(const string &s) {
+    vector<string> out; string cur;
+    for(char c: s) {
+        if(c == ';') {
+            out.push_back(trim(cur));
+            cur.clear();
+        } else cur.push_back(c);
     }
-    if (!cur.empty()) out.push_back(trim(cur));
+    if(!cur.empty()) out.push_back(trim(cur));
     return out;
 }
-template<typename CourseT, typename GradeT>
-static inline vector<CourseRecord<unsigned long long, CourseT, GradeT>>
-parsePrevCourses(const string &s) {
-    vector<CourseRecord<unsigned long long, CourseT, GradeT>> out;
-    vector<string> parts = parseSemis(s);
-    for (auto &p : parts) {
-        size_t pos = p.find('|');
-        if (pos == string::npos) continue;
-        string code = trim(p.substr(0,pos));
-        string gradeS = trim(p.substr(pos+1));
-        CourseRecord<unsigned long long, CourseT, GradeT> cr;
-        if constexpr (is_convertible<string,CourseT>::value) {
-            cr.course = code;
-        } else {
-            try { cr.course = static_cast<CourseT>(stoll(code)); } catch(...) { cr.course = CourseT(); }
-        }
-        GradeT g = GradeT();
-        try { g = static_cast<GradeT>(stod(gradeS)); } catch(...) {}
-        cr.grade = g;
-        out.push_back(cr);
+
+vector<pair<CourseId,double>> parse_prev(const string &s) {
+    vector<pair<CourseId,double>> out;
+    auto parts = split_semicolon(s);
+
+    for(auto &p : parts) {
+        auto pos = p.find('|');
+        if(pos == string::npos) continue;
+
+        string course = trim(p.substr(0,pos));
+        string grade  = trim(p.substr(pos+1));
+
+        double g = 0;
+        try { g = stod(grade); } catch(...) {}
+
+        out.emplace_back(CourseId(course), g);
     }
     return out;
 }
 
-// -----------------------------
-// Parallel sort (two-way) using SimpleThread (which will run sync here)
-// -----------------------------
-template<typename StudentT, typename Comparator>
-void parallel_sort_two_way(vector<StudentT> &data, Comparator cmp, string &logA, string &logB) {
-    size_t n = data.size();
-    if (n <= 1) return;
-    size_t mid = n/2;
-    SimpleThread t1, t2;
-    auto w1 = [&data, mid, &cmp]() { sort(data.begin(), data.begin() + (ptrdiff_t)mid, cmp); };
-    auto w2 = [&data, mid, &cmp, n]() { sort(data.begin() + (ptrdiff_t)mid, data.end(), cmp); };
-    t1.start(w1, "sorter-left");
-    t2.start(w2, "sorter-right");
-    // join no-ops
-    t1.join();
-    t2.join();
-    logA = t1.getLog();
-    logB = t2.getLog();
-    // merge
-    vector<StudentT> aux;
-    aux.reserve(n);
-    size_t i = 0, j = mid;
-    while (i < mid && j < n) {
-        if (cmp(data[i], data[j])) aux.push_back(data[i++]);
-        else aux.push_back(data[j++]);
-    }
-    while (i < mid) aux.push_back(data[i++]);
-    while (j < n) aux.push_back(data[j++]);
-    for (size_t k = 0; k < n; ++k) data[k] = move(aux[k]);
-}
+// ------------------ Main ------------------
 
-// -----------------------------
-// Main
-// -----------------------------
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-
-    cout << "ERP Q1 demo (NO OS THREADS): loading students_3000.csv\n";
-    string csvfile = "students_3000.csv";
-    ifstream fin(csvfile);
-    if (!fin) {
-        cerr << "Cannot open " << csvfile << " - please place it in working dir.\n";
-        return 2;
+    ifstream fin("students_3000.csv");
+    if(!fin) {
+        cerr << "ERROR: Unable to open students_3000.csv\n";
+        return 1;
     }
-    string headerLine;
-    getline(fin, headerLine);
 
-    using RollT = string;
-    using CourseT = string;
-    using GradeT = double;
-    using MyStudent = Student<RollT, CourseT, GradeT>;
+    string header;
+    getline(fin, header);
 
-    vector<MyStudent> students;
-    students.reserve(3100);
+    vector<Student> students;
     string line;
-    while (getline(fin, line)) {
-        if (trim(line).empty()) continue;
-        vector<string> cols = split(line, ',');
-        if (cols.size() < 6) continue;
-        string name = cols[0];
-        if (!name.empty() && name.front() == '"') name = name.substr(1);
-        if (!name.empty() && name.back() == '"') name.pop_back();
-        string roll = cols[1];
-        if (!roll.empty() && roll.front() == '"') roll = roll.substr(1);
-        if (!roll.empty() && roll.back() == '"') roll.pop_back();
-        string branch = trim(cols[2]);
-        int starty = stoi(trim(cols[3]));
-        string curCoursesRaw = cols[4];
-        string prevRaw = cols[5];
-        MyStudent s(name, roll, branch, starty);
-        vector<string> curs = parseSemis(curCoursesRaw);
-        for (auto &cc : curs) s.addCurrentCourse(cc);
-        auto prevs = parsePrevCourses<CourseT,GradeT>(prevRaw);
-        for (auto &p : prevs) s.addPrevCourse(p.course, p.grade);
-        students.push_back(move(s));
+
+    while(getline(fin, line)) {
+        if(trim(line).empty()) continue;
+
+        // CSV split (simple)
+        vector<string> cols;
+        string cur; bool inq = false;
+        for(char c : line) {
+            if(c == '"') { inq = !inq; continue; }
+            if(c == ',' && !inq) {
+                cols.push_back(cur);
+                cur.clear();
+            } else cur.push_back(c);
+        }
+        cols.push_back(cur);
+
+        if(cols.size() < 6) continue;
+
+        Student s;
+        s.name  = trim(cols[0]);
+        s.roll  = RollNumber(trim(cols[1]));
+        s.branch = trim(cols[2]);
+        s.start_year = stoi(trim(cols[3]));
+
+        // Current courses
+        for(auto &c : split_semicolon(cols[4]))
+            if(!c.empty()) s.current_courses.push_back(CourseId(c));
+
+        // Previous courses with grades
+        s.previous_courses = parse_prev(cols[5]);
+
+        students.push_back(s);
     }
+
     fin.close();
 
-    cout << "Loaded " << students.size() << " students.\n";
-    cout << "\nFirst 5 students in entered order:\n";
-    for (size_t k = 0; k < students.size() && k < 5; ++k) {
-        cout << k+1 << ". " << students[k].name() << " | roll: " << students[k].roll() << " | branch: " << students[k].branch() << " | start: " << students[k].start_year() << "\n";
-    }
+    // ------------------ PRINT SAMPLE 3–4 STUDENTS ------------------
 
-    auto cmp = [](const MyStudent &a, const MyStudent &b) {
-        if (a.branch() != b.branch()) return a.branch() < b.branch();
-        if (a.start_year() != b.start_year()) return a.start_year() < b.start_year();
-        return a.roll() < b.roll();
-    };
+    cout << "===== SAMPLE STUDENTS (Q1 Demonstration) =====\n\n";
 
-    string logA, logB;
-    auto t0 = Clock::now();
-    parallel_sort_two_way<MyStudent>(students, cmp, logA, logB);
-    auto t1 = Clock::now();
-    double dur_total = chrono::duration_cast<ms>(t1 - t0).count();
+    for(int i = 0; i < 4 && i < students.size(); i++) {
+        auto &s = students[i];
 
-    cout << "\nSorting complete. Total wall time: " << dur_total << " ms\n";
-    cout << "Worker logs:\n" << logA << "\n" << logB << "\n";
+        cout << "Student #" << (i+1) << "\n";
+        cout << "Name: " << s.name << "\n";
+        cout << "Roll Number: " << s.roll.toString() << "\n";
+        cout << "Branch: " << s.branch << "\n";
+        cout << "Starting Year: " << s.start_year << "\n";
 
-    cout << "\nFirst 5 students in sorted order:\n";
-    for (size_t k = 0; k < students.size() && k < 5; ++k) {
-        cout << k+1 << ". " << students[k].name() << " | roll: " << students[k].roll() << " | branch: " << students[k].branch() << " | start: " << students[k].start_year() << "\n";
-    }
-
-    ofstream fout("students_sorted.csv");
-    fout << "name,roll,branch,start_year,current_courses,previous_courses_with_grades\n";
-    for (auto it = students.begin(); it != students.end(); ++it) {
-        fout << it->toCSVRow() << "\n";
-    }
-    fout.close();
-    cout << "\nWrote students_sorted.csv (" << students.size() << " rows).\n";
-
-    // build simple index
-    unordered_map<string, vector<size_t>> high_grade_index;
-    for (size_t idx = 0; idx < students.size(); ++idx) {
-        const auto &prevs = students[idx].prev_courses();
-        for (const auto &pr : prevs) {
-            ostringstream ss; ss << pr.course;
-            string key = ss.str();
-            if (pr.grade >= 9.0) high_grade_index[key].push_back(idx);
+        cout << "Current Courses: ";
+        if(s.current_courses.empty()) cout << "[None]\n";
+        else {
+            for(auto &c : s.current_courses)
+                cout << c.toString() << " ";
+            cout << "\n";
         }
+
+        cout << "Previous Courses with Grades:\n";
+        if(s.previous_courses.empty()) cout << "   [None]\n";
+        else {
+            for(auto &p : s.previous_courses)
+                cout << "   " << p.first.toString()
+                     << " | Grade: " << p.second << "\n";
+        }
+
+        cout << "---------------------------------------\n\n";
     }
-    cout << "\nBuilt quick index for students with grade >= 9 per course (sample sizes):\n";
-    size_t cnt = 0;
-    for (auto &kv : high_grade_index) {
-        cout << "Course " << kv.first << " -> " << kv.second.size() << " students\n";
-        if (++cnt >= 5) break;
-    }
-    cout << "\nDemo complete.\n";
+
     return 0;
 }

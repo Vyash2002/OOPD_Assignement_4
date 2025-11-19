@@ -5,10 +5,10 @@
 // Or use Makefile with THREAD=std or THREAD=pthread to enable real threads.
 //
 // Exports (when chosen):
-//   - students_all_details.csv
 //   - students_sorted_q3.csv
 //   - students_sorted_menu.csv
 //   - high_grade_students.csv
+//   - q2_mapped_samples.csv (optional export from Q2)
 //
 // Requires students_3000.csv in current directory.
 
@@ -176,11 +176,81 @@ void print_student_full(const Student &s) {
     }
 }
 
-// Default IIT->IIIT mapping; user can augment interactively
+// helper to detect if roll is numeric-only
+static bool roll_is_numeric(const string &r) {
+    if (r.empty()) return false;
+    for (char c : r) if (!isdigit((unsigned char)c)) return false;
+    return true;
+}
+
+// ---------------- Q1: SAMPLE PRINT ----------------
+// Replaced export behavior: now Q1 prints up to 4 sample students showing different roll types.
+// No CSV export as requested.
+void action_q1_sample_print() {
+    cout << "\n[Q1] Total students loaded: " << students.size() << "\n\n";
+
+    if (students.empty()) {
+        cout << "No students to display.\n";
+        return;
+    }
+
+    // We'll choose up to 4 samples:
+    // - first numeric-roll student
+    // - first non-numeric-roll student
+    // - then two other students (if available)
+    vector<int> chosen;
+    chosen.reserve(4);
+
+    int first_numeric = -1, first_nonnumeric = -1;
+    for (size_t i = 0; i < students.size(); ++i) {
+        if (first_numeric == -1 && roll_is_numeric(students[i].roll)) first_numeric = (int)i;
+        if (first_nonnumeric == -1 && !roll_is_numeric(students[i].roll)) first_nonnumeric = (int)i;
+        if (first_numeric != -1 && first_nonnumeric != -1) break;
+    }
+    if (first_numeric != -1) chosen.push_back(first_numeric);
+    if (first_nonnumeric != -1 && first_nonnumeric != first_numeric) chosen.push_back(first_nonnumeric);
+
+    // add two more distinct indices (if available)
+    for (size_t i = 0; i < students.size() && chosen.size() < 4; ++i) {
+        int idx = (int)i;
+        bool already = false;
+        for (int c : chosen) if (c == idx) { already = true; break; }
+        if (!already) chosen.push_back(idx);
+    }
+
+    cout << "Showing " << chosen.size() << " sample students (no export):\n\n";
+
+    for (size_t k = 0; k < chosen.size(); ++k) {
+        const Student &s = students[chosen[k]];
+        cout << "----- Sample Student #" << (k+1) << " -----\n";
+        cout << "Name: " << s.name << "\n";
+        cout << "Roll: " << s.roll;
+        cout << "   (type: " << (roll_is_numeric(s.roll) ? "numeric" : "string") << ")\n";
+        cout << "Branch: " << s.branch << " | Start Year: " << s.start_year << "\n";
+        cout << "Current courses: ";
+        if (s.current_courses.empty()) cout << "[none]";
+        for (size_t i = 0; i < s.current_courses.size(); ++i) {
+            if (i) cout << ", ";
+            cout << s.current_courses[i];
+        }
+        cout << "\nPrevious courses with grades:\n";
+        if (s.prev_courses.empty()) cout << "  [none]\n";
+        else {
+            for (auto &p : s.prev_courses) {
+                cout << "  - " << p.first << "  | grade: " << fixed << setprecision(1) << p.second << "\n";
+            }
+        }
+        cout << "-------------------------------\n\n";
+    }
+}
+
+// ---------------- Q2: mapping demo (updated to show sample mapped students + optional CSV) ----------------
+
+// default mapping table (IIT integer -> IIIT string)
 static unordered_map<int,string> default_iit_to_iiit_map() {
     return {
-        {101, "OOPS"},{102,"DSA"},{201,"DBMS"},{202,"OS"},{301,"CN"},
-        {302,"NLP"},{401,"ML"},{402,"AI"},{501,"SE"},{502,"CNTR"}
+        {101, "OOPS"},{102,"DSA"},{103,"MTH"},{201,"DBMS"},{202,"OS"},
+        {301,"CN"},{302,"NLP"},{401,"ML"},{402,"AI"},{501,"SE"}
     };
 }
 static unordered_map<int,string> iit2iiit = default_iit_to_iiit_map();
@@ -190,40 +260,16 @@ static void build_reverse_map() {
     for (auto &kv : iit2iiit) iiit2iit[kv.second] = kv.first;
 }
 
-// ---------------- Actions for menu options ----------------
-
-// Q1: show number of students + optionally export full details
-void action_q1_count_and_export() {
-    cout << "\n[Q1] Total students loaded: " << students.size() << "\n";
-    cout << "Do you want to export all student details to students_all_details.csv? (y/N): " << flush;
-    string resp; getline(cin >> ws, resp);
-    if (!resp.empty() && (resp[0]=='y' || resp[0]=='Y')) {
-        ofstream fout("students_all_details.csv");
-        fout << "name,roll,branch,start_year,current_courses,previous_courses_with_grades\n";
-        for (auto &s : students) {
-            fout << "\"" << s.name << "\"," << "\"" << s.roll << "\"," << s.branch << "," << s.start_year << ",";
-            // current courses
-            for (size_t i=0;i<s.current_courses.size();++i) {
-                if (i) fout << ";";
-                fout << s.current_courses[i];
-            }
-            fout << ",";
-            // prev courses
-            for (size_t i=0;i<s.prev_courses.size();++i) {
-                if (i) fout << ";";
-                fout << s.prev_courses[i].first << "|" << s.prev_courses[i].second;
-            }
-            fout << "\n";
-        }
-        fout.close();
-        cout << "Exported students_all_details.csv\n";
-    }
+// helper: token numeric?
+static bool token_is_numeric(const string &t) {
+    if (t.empty()) return false;
+    for (char c : t) if (!isdigit((unsigned char)c)) return false;
+    return true;
 }
 
-// Q2: mapping demo and detailed mapped view + export
 void action_q2_mapping_and_export() {
     build_reverse_map();
-    cout << "\n[Q2] IIT↔IIIT Mapping Demo\n";
+    cout << "\n[Q2] IIT↔IIIT Mapping Sample (show students mapped across systems)\n";
     cout << "Default mapping size: " << iit2iiit.size() << "\n";
     cout << "Would you like to add/override mappings interactively? (y/N): " << flush;
     string r; getline(cin >> ws, r);
@@ -243,91 +289,107 @@ void action_q2_mapping_and_export() {
             cout << "Added mapping " << iit << " -> " << iiit << "\n";
         }
     }
-    cout << "Choose output mode:\n1) Print mapped courses per student\n2) Export mapping report CSV\nChoice (1/2, default 1): " << flush;
-    string ch; getline(cin >> ws, ch);
-    if (ch.empty()) ch = "1";
-    if (ch == "2") {
-        ofstream fout("mapping_report.csv");
-        fout << "name,roll,branch,current_mapped,previous_mapped\n";
-        for (auto &s : students) {
-            // current mapped: for each current course show mapping if exists
-            string curmap;
-            for (size_t i=0;i<s.current_courses.size();++i) {
-                if (i) curmap += ";";
-                string c = s.current_courses[i];
-                bool numeric = !c.empty();
-                for (char ch : c) if (!isdigit((unsigned char)ch)) { numeric=false; break; }
-                if (numeric) {
-                    int id = stoi(c);
-                    auto it = iit2iiit.find(id);
-                    if (it != iit2iiit.end()) curmap += c + "->" + it->second;
-                    else curmap += c + "->";
-                } else {
-                    auto it = iiit2iit.find(c);
-                    if (it != iiit2iit.end()) curmap += c + "->" + to_string(it->second);
-                    else curmap += c + "->";
+
+    struct MapRecord {
+        size_t student_idx;
+        string name;
+        string roll;
+        string branch;
+        string direction; // "IIIT->IIT" or "IIT->IIIT"
+        string from;      // as in CSV
+        string to;        // mapping
+        double grade;     // -1 if not prev
+        bool is_prev;
+    };
+
+    vector<MapRecord> all_mapped;
+
+    for (size_t i = 0; i < students.size(); ++i) {
+        const Student &s = students[i];
+        // current courses
+        for (auto &c : s.current_courses) {
+            string tok = trim(c);
+            if (tok.empty()) continue;
+            if (token_is_numeric(tok)) {
+                int id = 0;
+                try { id = stoi(tok); } catch(...) { continue; }
+                auto it = iit2iiit.find(id);
+                if (it != iit2iiit.end()) {
+                    all_mapped.push_back({i, s.name, s.roll, s.branch, "IIT->IIIT", tok, it->second, -1.0, false});
+                }
+            } else {
+                auto it2 = iiit2iit.find(tok);
+                if (it2 != iiit2iit.end()) {
+                    all_mapped.push_back({i, s.name, s.roll, s.branch, "IIIT->IIT", tok, to_string(it2->second), -1.0, false});
                 }
             }
-            string prevmap;
-            for (size_t i=0;i<s.prev_courses.size();++i) {
-                if (i) prevmap += ";";
-                string c = s.prev_courses[i].first;
-                bool numeric = !c.empty();
-                for (char ch : c) if (!isdigit((unsigned char)ch)) { numeric=false; break; }
-                if (numeric) {
-                    int id = stoi(c);
-                    auto it = iit2iiit.find(id);
-                    if (it != iit2iiit.end()) prevmap += c + "->" + it->second;
-                    else prevmap += c + "->";
-                } else {
-                    auto it = iiit2iit.find(c);
-                    if (it != iiit2iit.end()) prevmap += c + "->" + to_string(it->second);
-                    else prevmap += c + "->";
+        }
+        // previous courses
+        for (auto &p : s.prev_courses) {
+            string tok = trim(p.first);
+            double g = p.second;
+            if (tok.empty()) continue;
+            if (token_is_numeric(tok)) {
+                int id = 0;
+                try { id = stoi(tok); } catch(...) { continue; }
+                auto it = iit2iiit.find(id);
+                if (it != iit2iiit.end()) {
+                    all_mapped.push_back({i, s.name, s.roll, s.branch, "IIT->IIIT", tok, it->second, g, true});
+                }
+            } else {
+                auto it2 = iiit2iit.find(tok);
+                if (it2 != iiit2iit.end()) {
+                    all_mapped.push_back({i, s.name, s.roll, s.branch, "IIIT->IIT", tok, to_string(it2->second), g, true});
                 }
             }
-            fout << "\"" << s.name << "\"," << "\"" << s.roll << "\"," << s.branch << "," << "\"" << curmap << "\"," << "\"" << prevmap << "\"" << "\n";
+        }
+    }
+
+    if (all_mapped.empty()) {
+        cout << "No cross-system mappings found with current mapping table.\n";
+        return;
+    }
+
+    cout << "Found " << all_mapped.size() << " mapping occurrences (current + previous courses).\n";
+
+    // Select up to SAMPLE distinct students to display
+    const size_t SAMPLE = 8;
+    unordered_set<size_t> shown_students;
+    vector<size_t> sample_student_indices;
+    for (auto &rec : all_mapped) {
+        if (shown_students.size() >= SAMPLE) break;
+        if (shown_students.insert(rec.student_idx).second) sample_student_indices.push_back(rec.student_idx);
+    }
+
+    cout << "\n--- Sample mapped students (showing up to " << SAMPLE << ") ---\n\n";
+    for (auto si : sample_student_indices) {
+        const Student &s = students[si];
+        cout << "Student: " << s.name << "  |  Roll: " << s.roll << "  | Branch: " << s.branch << " | Year: " << s.start_year << "\n";
+        // print all mapping occurrences for this student
+        for (auto &rec : all_mapped) {
+            if (rec.student_idx != si) continue;
+            cout << "  [" << rec.direction << "] " << rec.from << " -> " << rec.to;
+            if (rec.is_prev) cout << "   (prev, grade=" << fixed << setprecision(1) << rec.grade << ")";
+            cout << "\n";
+        }
+        cout << "--------------------------------------------------\n";
+    }
+
+    // Optional export
+    cout << "\nExport full mapping occurrences to 'q2_mapped_samples.csv'? (y/N): " << flush;
+    string ans;
+    if (!getline(cin >> ws, ans)) ans = "N";
+    if (!ans.empty() && (ans[0]=='y' || ans[0]=='Y')) {
+        ofstream fout("q2_mapped_samples.csv");
+        fout << "student_idx,name,roll,branch,direction,course_from,course_to,is_prev,grade\n";
+        for (auto &rec : all_mapped) {
+            fout << rec.student_idx << ",\"" << rec.name << "\",\"" << rec.roll << "\",\"" << rec.branch << "\","
+                 << rec.direction << ",\"" << rec.from << "\",\"" << rec.to << "\"," << (rec.is_prev ? 1 : 0) << ",";
+            if (rec.is_prev) fout << rec.grade;
+            fout << "\n";
         }
         fout.close();
-        cout << "Exported mapping_report.csv\n";
-    } else {
-        for (size_t i=0;i<students.size(); ++i) {
-            cout << "---- Student: " << students[i].name << " (" << students[i].roll << ") ----\n";
-            cout << "Current courses mapping:\n";
-            for (auto &c : students[i].current_courses) {
-                bool numeric = !c.empty();
-                for (char ch : c) if (!isdigit((unsigned char)ch)) { numeric=false; break; }
-                if (numeric) {
-                    int id = stoi(c);
-                    auto it = iit2iiit.find(id);
-                    if (it != iit2iiit.end()) cout << "  " << c << " -> IIIT: " << it->second << "\n";
-                    else cout << "  " << c << " -> [no mapping]\n";
-                } else {
-                    auto it = iiit2iit.find(c);
-                    if (it != iiit2iit.end()) cout << "  " << c << " -> IIT: " << it->second << "\n";
-                    else cout << "  " << c << " -> [no mapping]\n";
-                }
-            }
-            cout << "Previous courses mapping:\n";
-            for (auto &p : students[i].prev_courses) {
-                auto c = p.first;
-                bool numeric = !c.empty();
-                for (char ch : c) if (!isdigit((unsigned char)ch)) { numeric=false; break; }
-                if (numeric) {
-                    int id = stoi(c);
-                    auto it = iit2iiit.find(id);
-                    if (it != iit2iiit.end()) cout << "  " << c << " -> IIIT: " << it->second << " | grade: " << p.second << "\n";
-                    else cout << "  " << c << " -> [no mapping] | grade: " << p.second << "\n";
-                } else {
-                    auto it = iiit2iit.find(c);
-                    if (it != iiit2iit.end()) cout << "  " << c << " -> IIT: " << it->second << " | grade: " << p.second << "\n";
-                    else cout << "  " << c << " -> [no mapping] | grade: " << p.second << "\n";
-                }
-            }
-            if ((i+1) % 25 == 0) {
-                cout << "(printed " << (i+1) << " students, press Enter to continue)"; getline(cin, r);
-            }
-        }
-        cout << "Done printing mapping details.\n";
+        cout << "Exported q2_mapped_samples.csv (" << all_mapped.size() << " rows).\n";
     }
 }
 
@@ -497,8 +559,8 @@ void action_q5_query_and_export() {
 // ---------------- Menu & main ----------------
 void show_menu() {
     cout << "\n===== ERP Menu (Q1 - Q5) =====\n";
-    cout << "1) Q1: Count & export all student details\n";
-    cout << "2) Q2: IIT<->IIIT course mapping (view / export / edit)\n";
+    cout << "1) Q1: Show sample students (3-4) with roll types, courses & grades (no export)\n";
+    cout << "2) Q2: Show sample students mapped across IIT<->IIIT systems (view + optional export)\n";
     cout << "3) Q3: Parallel sort (per-worker times) and export sorted CSV\n";
     cout << "4) Q4: Entered/sorted views using iterators (no copying) and export\n";
     cout << "5) Q5: Fast query / export students with grade >= 9.0\n";
@@ -526,7 +588,7 @@ int main(int argc, char** argv) {
         if (!(cin >> choice)) { cout << "\nInput closed, exiting.\n"; break; }
         string rest; getline(cin, rest); // eat newline
         if (choice == "0") { cout << "Exiting.\n"; break; }
-        else if (choice == "1") action_q1_count_and_export();
+        else if (choice == "1") action_q1_sample_print();
         else if (choice == "2") action_q2_mapping_and_export();
         else if (choice == "3") action_q3_parallel_and_export();
         else if (choice == "4") action_q4_iterators_and_export();
