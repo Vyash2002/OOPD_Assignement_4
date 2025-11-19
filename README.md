@@ -15,11 +15,17 @@ This project is a complete University ERP System implemented in C++.
 It manages over 3000 students and implements all features required for Assignment 4 (Q1–Q5) including:
 
 •	Flexible student data representation
+
 •	IITD ↔ IIITD course code mapping
+
 •	Parallel sorting with custom threads
+
 •	Iterator-based views
+
 •	Fast grade-based search indexing
+
 •	Menu-driven interface
+
 Each question is implemented in a separate file (erp_q1.cpp … erp_q5.cpp), and all are unified inside erp_menu.cpp.
 ________________________________________
 
