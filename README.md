@@ -1,220 +1,222 @@
-📘 ERP Student Management System (OOPD Assignment — IIIT-Delhi)
+🌐 University ERP Student Management System
 
-This project is a menu-driven ERP system developed as part of the Object-Oriented Programming & Design (OOPD) course.
-It loads and manages student data from a CSV file (students_3000.csv) and demonstrates advanced C++ concepts including:
+IIIT-Delhi — OOPD Assignment 4 (Q1–Q5 Complete Implementation)
 
-1. Generic data handling for different universities
+This project is a C++-based ERP system that manages 3000 student records and implements all requirements of the OOPD Assignment 4.
+It showcases advanced concepts such as generic data representation, cross-institute course mapping, custom threading, parallel sorting, iterator-based views, and efficient indexing for queries.
 
-2. Course code mapping between IIT-Delhi & IIIT-Delhi
+The system includes both:
 
-3. Multi-threaded sorting
+A unified menu-driven ERP program (erp_menu.cpp), and
 
-4. Iterator-based views
-
-5. fficient grade-based indexing
-
-6. Clean menu-driven UI
-
-The application integrates all features from Q1 to Q5 into a single executable: erp_menu.
-
-
-🔹 Features Overview
-
-✅ Q1 — Flexible Student Representation + Sample Display
-
-Universities use different types for roll numbers (string / integer) and course codes.
-This system stores these flexibly and prints 3–4 sample students showing:
-
-1. Name
-
-2. Roll number (and its type: numeric / string)
-
-3. Branch
-
-4. Start year
-
-5. Current courses
-
-6. Previous courses with grades
-
-❗ Q1 does not export to CSV — only prints samples to screen.
-
-
-✅ Q2 — IIT–IIIT Course Mapping
-
-IIIT-Delhi students may take IIT-Delhi courses where:
-
-1. IIIT course codes are strings (e.g., OOPS, DSA).
-
-2. IIT course codes are integers (e.g., 101, 202).
-
-The program:
-
-1. Detects whether a course is IIT-style or IIIT-style
-
-2. Maps courses between IIT and IIIT (default + user-defined mappings)
-
-3. Prints mapped courses for each student
-
-4. Optionally exports a full mapping_report.csv
-
-5. Mapping examples:
-
-  101 -> OOPS
-  OOPS -> 101
-  
-
-✅ Q3 — Parallel Sorting (Multi-threaded)
-
-Students are sorted based on:
-
-  branch → starting year → roll number
-
-
-Supports:
-
-1. Choosing number of worker threads
-
-2. Per-thread timing
-
-3. k-way merge of sorted partitions
-
-4. Optional export to students_sorted_q3.csv
-
-
-✅ Q4 — Iterator-Based Views (Zero Copy)
-
-Sorts students without copying objects using:
-
-1. Index vectors
-
-2. Iterator-style traversal
-
-3. Reverse iteration for descending order
-
-Also offers optional export to:
-students_sorted_menu.csv
-
-✅ Q5 — Fast Queries Using Pre-built Grade Index
-
-An efficient lookup table indexes all students who scored:
-
-  grade ≥ 9.0
-
-
-Features:
-
-Instant search by course (e.g., OOPS, 110)
-
-Optional full export to high_grade_students.csv
+Five standalone programs (erp_q1.cpp … erp_q5.cpp) for individual questions.
 
 📂 Project Structure
 OOPD_Assignment_4/
 │
-├── basicIO.h
+├── basicIO.h                   # Provided input–output utilities
 ├── basicIO.cpp
 │
-├── erp_menu.cpp           # Main unified menu for Q1–Q5
-├── erp_q1.cpp             # Standalone code for Q1 (if run separately)
-├── erp_q2.cpp             # Standalone code for Q2
-├── erp_q3.cpp             # Standalone code for Q3
-├── erp_q4.cpp             # Standalone code for Q4
-├── erp_q5.cpp             # Standalone code for Q5
+├── erp_menu.cpp                # Main unified Q1–Q5 menu-driven system
 │
-├── mythread_noos.h        # Custom thread abstraction (fallback threading)
+├── erp_q1.cpp                  # Individual solution for Question 1
+├── erp_q2.cpp                  # Individual solution for Question 2
+├── erp_q3.cpp                  # Individual solution for Question 3
+├── erp_q4.cpp                  # Individual solution for Question 4
+├── erp_q5.cpp                  # Individual solution for Question 5
 │
-├── students_3000.csv      # Required dataset (3000 student records)
-├── makefile 
+├── mythread_noos.h             # Custom fallback threading layer
+│
+├── students_3000.csv           # Dataset of 3000 generated student records
+│
+├── makefile                    # Builds all executables
+│
+├── students_sorted_q3.csv      # Output (Q3 sorted records)
+├── students_sorted_menu.csv    # Output (Q4 iterator-based sort)
+├── mapping_report.csv          # Output (Q2 mappings)
+├── high_grade_students.csv     # Output (Q5 grade index export)
+│
+└── README.md                   # Documentation
+
+🚀 Features (Q1 — Q5)
+
+Each part of the assignment is implemented both standalone and inside the unified menu program.
+
+🔹 Q1 — Flexible Student Class & Sample Output
+
+Universities differ in:
+
+Roll number types → numeric / string
+
+Course identification → integer / acronym
+
+This system handles all variations using generic string-based parsing.
+
+Q1 Features:
+
+✔ Reads all 3000 students
+✔ Displays 3–4 sample students showing:
+
+Name
+
+Roll number + detected type
+
+Branch
+
+Start year
+
+Current courses
+
+Previous courses & grades
+
+❗ No CSV export (as requested)
+❗ Only a clean sample is printed
+
+🔹 Q2 — IIT–IIIT Course Code Mapping
+
+IIIT-Delhi students can take IIT-Delhi courses.
+Both use different naming conventions:
+
+Institute	Course Code Type
+IIT Delhi	integer (e.g., 101, 202)
+IIIT Delhi	acronym (e.g., OOPS, DSA)
+Q2 Capabilities:
+
+✔ Automatic detection of code type (numeric/string)
+✔ Default IIT↔IIIT mapping
+✔ User can add/override custom mappings
+✔ Shows mapped courses for students
+✔ Optional export → mapping_report.csv
+
+Example Mapping:
+
+101 → OOPS
+OOPS → 101
+
+🔹 Q3 — Parallel Sorting (Custom Threads)
+
+Sorting is done using:
+
+branch → start_year → roll
 
 
-🚀 How to Build & Run
-Compile
-make clean
-make
+However, your compiler does not support <thread> or <pthread>.
+So a custom thread handler mythread_noos.h simulates multi-threading.
 
-Run
-./erp_menu
+Q3 Features:
 
+✔ “Threads” divide the array into chunks
+✔ Per-thread timing logs
+✔ Final sorted merge (k-way merge)
+✔ Optional export → students_sorted_q3.csv
 
-Make sure students_3000.csv is in the same directory as the executable.
+🔹 Q4 — Iterator-Based Views (Zero Copy)
 
-🧩 How the Menu Looks
+Sorting without copying student objects, using:
+
+vector<size_t> index mapping
+
+Forward iterators (ascending order)
+
+Reverse iterators (descending order)
+
+Q4 Features:
+
+✔ Original input order view
+✔ Sorted ascending view
+✔ Sorted descending view
+✔ Zero-copy efficiency
+✔ Optional export → students_sorted_menu.csv
+
+🔹 Q5 — Fast Queries Using Grade Index
+
+A precomputed unordered_map enables O(1) lookup:
+
+course_code → vector of students with grade ≥ 9.0
+
+Q5 Features:
+
+✔ Instant search by course (e.g., OOPS, 101)
+✔ Shows all students with grade ≥ 9
+✔ Optional export → high_grade_students.csv
+
+📸 Menu Interface Screenshot (Text View)
 ===== ERP Menu (Q1 - Q5) =====
-1) Q1: Show sample students (3-4) with roll types, courses & grades
-2) Q2: IIT<->IIIT course mapping (view / export / edit)
-3) Q3: Parallel sort (per-worker times) and export sorted CSV
-4) Q4: Entered/sorted views using iterators and export
-5) Q5: Fast query / export students with grade >= 9.0
+1) Show sample students (Q1)
+2) IIT <-> IIIT course mapping (Q2)
+3) Parallel sorting with threads (Q3)
+4) Iterator-based sorted views (Q4)
+5) Fast grade lookup (Q5)
 6) Reload CSV
 0) Exit
 ----------------------------------------------
 Enter choice:
 
-
-🛠 Concepts Demonstrated
-
-This project showcases multiple advanced C++ concepts:
-
-🧵 Threading
-
-1. std::thread, pthread, or fallback simulated threads
-
-2. Thread-safe timing logs
-
-3. K-way merge of sorted partitions
-
-📦 Templates & Flexibility
-
-1. Roll numbers accepted as both numeric and string types
-
-2. Course codes stored generically
-
-🔍 Parsing & CSV Handling
-
-1. Robust CSV parsing (quoted fields supported)
-
-2. Semicolon-delimited list parsing
-
-🗂 Efficient Data Structures
-
-1. unordered_map index for fast grade lookups
-
-2. Vector-based student store
-
-3. Iterator-based sorted views
+🛠️ Compilation and Execution
+✔ Build using Makefile
+make
 
 
-📌 Requirements
+This generates executables:
 
-C++17
+erp_menu
 
-Linux / macOS / Windows (MinGW / WSL)
+erp_q1, erp_q2, erp_q3, erp_q4, erp_q5
 
-Input file: students_3000.csv
+✔ Run menu-driven ERP program
+./erp_menu
 
-📜 Example Output Snippet (Q1)
------ Sample Student #1 -----
-Name: Riya Sharma
-Roll: 102034
-(type: numeric)
-Branch: CSE | Start Year: 2020
-Current courses: OOPS, DBMS
-Previous courses with grades:
-  - MATH101 | grade: 9.5
-  - PHY101 | grade: 8.7
+✔ Run any specific question individually
+./erp_q1
+./erp_q2
+./erp_q3
+./erp_q4
+./erp_q5
 
-🤝 Contribution Guidelines
+🧵 Threading Implementation Note
 
-Feel free to:
+Since the compiler does not support std::thread and pthread,
+we provide:
 
-1. Add new mappings
+mythread_noos.h
 
-2. Improve UI
+A No-OS simulated threading interface that preserves the structure of:
 
-3. Extend multithreading features
+thread.start(task);
+thread.join();
 
-4. Add new query modules
 
-📄 License
+But runs tasks sequentially so the program works everywhere.
 
-This project is part of the IIIT-Delhi OOPD Assignment and is for academic use only.
+📊 Dataset: students_3000.csv
+
+The dataset contains:
+
+3000 randomly generated students
+
+Roll numbers of mixed formats
+
+Randomized courses (IIT + IIIT)
+
+Random GPA distributions
+
+Clean CSV format with:
+
+name, roll, branch, start_year, current_courses, previous_courses
+
+🎓 Educational Concepts Demonstrated
+
+✔ Object-Oriented Design (Classes, Encapsulation)
+✔ File Handling & CSV Parsing
+✔ Iterator-based architecture
+✔ Custom threading abstraction
+✔ Multi-way merge sorting
+✔ Indexing & hashing for O(1) lookup
+✔ Menu-driven user interface
+✔ Clean modular project structure
+
+👨‍💻 Author
+
+Yash Verma
+B.Tech CSE
+IIIT-Delhi
